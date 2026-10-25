@@ -3,7 +3,7 @@ import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowLeft, ArrowRight, AudioLines, Bookmark, Check, ChevronDown, CircleHelp, Clock3, FileText, Fingerprint, Image as ImageIcon, LockKeyhole, MessageCircle, Plus, Search, ShieldAlert, Sparkles, Video, X } from 'lucide-react';
 import type { Evidence, MysteryCase, Result, Suspect } from './types';
 
-const API = (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://localhost:4000/api/v1';
+const API = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api/v1';
 const examples = ['A museum’s moonstone vanishes during a private after-hours tour.', 'Someone swapped the winning pie at a small-town bake-off.', 'A prototype disappeared from a campus lab during a power cut.'];
 const evidenceIcon: Record<string, typeof FileText> = { messages: MessageCircle, image: ImageIcon, video: Video, camera_log: Video, witness_statement: AudioLines, document: FileText, physical_clue: Fingerprint };
 const category: Record<string, string> = { messages: 'Messages', image: 'Image', video: 'Camera', camera_log: 'Camera log', witness_statement: 'Statement', document: 'Document', physical_clue: 'Physical clue' };

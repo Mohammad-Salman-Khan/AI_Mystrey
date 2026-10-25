@@ -36,6 +36,10 @@ function safeErrorDetails(error: unknown): Record<string, unknown> {
 const publicCase = (doc: any) => ({ id: doc.publicId, title: doc.title, scenario: doc.scenario, briefing: doc.briefing, setting: doc.setting, suspects: doc.suspects, timeline: doc.timeline, evidence: doc.evidence.map((e: any) => { const record = typeof e.toObject === 'function' ? e.toObject() : e; return { ...record, generationStatus: e.type === 'image' || e.type === 'video' ? 'unavailable' : e.type === 'camera_log' ? 'simulated' : 'ready' }; }), status: doc.status, createdAt: doc.createdAt });
 
 app.get('/api/v1/health', asyncRoute(async (_req, res) => res.json({ status: 'ok', database: database?.mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' })));
+app.get('/api/v1/ready', (_req, res) => {
+  const ready = database?.mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({ status: ready ? 'ready' : 'not_ready', database: ready ? 'connected' : 'disconnected' });
+});
 app.post('/api/v1/cases', asyncRoute(async (req, res) => {
   const input = z.object({ scenario: z.string().trim().min(20).max(1200), difficulty: z.enum(['easy','medium','hard']).default('medium') }).safeParse(req.body);
   if (!input.success) throw fail('VALIDATION_ERROR', 'Write a scenario between 20 and 1,200 characters.');
@@ -100,6 +104,14 @@ const start = async () => {
   } else {
     console.error('MONGODB_URI is missing. Add it to the repository root .env file; case operations are disabled.');
   }
-  app.listen(port, () => console.log(`Mystery Room API listening on ${port}`));
+  if (process.env.NODE_ENV === 'production') {
+    const clientDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+    app.use(express.static(clientDist, { index: false }));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) return next();
+      res.sendFile(resolve(clientDist, 'index.html'));
+    });
+  }
+  app.listen(port, '0.0.0.0', () => console.log(`Mystery Room API listening on ${port}`));
 };
 void start();
