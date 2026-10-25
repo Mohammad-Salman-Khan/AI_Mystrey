@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { NextFunction, Request, Response } from 'express';
@@ -75,14 +76,6 @@ app.post('/api/v1/cases/:caseId/accusation', asyncRoute(async (req, res) => {
   const culprit = updated.suspects.find(s => s.id === updated.solution?.culpritSuspectId);
   res.json({ result: { correct: input.data.suspectId === updated.solution?.culpritSuspectId, accusedSuspectId: input.data.suspectId, culpritSuspectId: updated.solution?.culpritSuspectId, culpritName: culprit?.name, explanation: updated.solution?.explanation, decisiveEvidenceIds: updated.solution?.decisiveEvidenceIds, redHerringEvidenceIds: updated.solution?.redHerringEvidenceIds } });
 }));
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || (err.code === 'GENERATION_UNAVAILABLE' ? 503 : 500);
-  const code = err.code || 'INTERNAL_ERROR';
-  const message = err.status || err.code === 'GENERATION_UNAVAILABLE' || err.code === 'GENERATION_FAILED' ? err.message : 'Something went wrong. Please try again.';
-  console.error('[api] request_failed', JSON.stringify({ requestId: res.locals.requestId, code, status, ...safeErrorDetails(err) }));
-  res.status(status).json({ error: { code, message, requestId: res.locals.requestId } });
-});
-
 const port = Number(process.env.PORT || 4000);
 const start = async () => {
   const configuredUri = process.env.MONGODB_URI?.trim();
@@ -104,14 +97,29 @@ const start = async () => {
   } else {
     console.error('MONGODB_URI is missing. Add it to the repository root .env file; case operations are disabled.');
   }
-  if (process.env.NODE_ENV === 'production') {
-    const clientDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+  // Compiled entry is server/dist/index.js; two levels up is the repository
+  // root, so the Vite output is client/dist (client/vite.config.ts default).
+  const clientDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../client/dist');
+  const clientIndex = resolve(clientDist, 'index.html');
+  if (existsSync(clientIndex)) {
     app.use(express.static(clientDist, { index: false }));
     app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api/')) return next();
-      res.sendFile(resolve(clientDist, 'index.html'));
+      if (req.path === '/api' || req.path.startsWith('/api/')) return next();
+      res.sendFile(clientIndex);
     });
+    console.log(`Serving React frontend from ${clientDist}`);
+  } else {
+    console.warn(`React build not found at ${clientIndex}; frontend routes are unavailable.`);
   }
+
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || (err.code === 'GENERATION_UNAVAILABLE' ? 503 : 500);
+    const code = err.code || 'INTERNAL_ERROR';
+    const message = err.status || err.code === 'GENERATION_UNAVAILABLE' || err.code === 'GENERATION_FAILED' ? err.message : 'Something went wrong. Please try again.';
+    console.error('[api] request_failed', JSON.stringify({ requestId: res.locals.requestId, code, status, ...safeErrorDetails(err) }));
+    res.status(status).json({ error: { code, message, requestId: res.locals.requestId } });
+  });
+
   app.listen(port, '0.0.0.0', () => console.log(`Mystery Room API listening on ${port}`));
 };
 void start();
