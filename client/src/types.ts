@@ -1,0 +1,4 @@
+export type Suspect = { id: string; name: string; profile: string; relationship: string; motive: string; alibi: string; notes: string };
+export type Evidence = { id: string; type: 'messages' | 'image' | 'video' | 'camera_log' | 'witness_statement' | 'document' | 'physical_clue'; title: string; description: string; content: string; relatedSuspectIds: string[]; generationStatus: 'ready' | 'unavailable' | 'simulated' };
+export type MysteryCase = { id: string; title: string; scenario: string; briefing: string; setting: string; suspects: Suspect[]; timeline: { time: string; description: string }[]; evidence: Evidence[]; status: 'investigating' | 'completed'; createdAt: string };
+export type Result = { correct: boolean; accusedSuspectId: string; culpritSuspectId: string; culpritName: string; explanation: string; decisiveEvidenceIds: string[]; redHerringEvidenceIds: string[] };
